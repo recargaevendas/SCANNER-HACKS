@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FF HACK SCANNER</title>
+  <style>
+    :root {
+      --bg-color: #080c0a;
+      --card-bg: #0f1713;
+      --neon-green: #00ff66;
+      --alert-red: #ff3333;
+      --warn-yellow: #ffcc00;
+      --text-main: #e0f0e8;
+      --border-color: #1a3324;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', monospace; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 15px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      border-bottom: 2px solid var(--neon-green);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .title { color: var(--neon-green); font-size: 1.5rem; text-shadow: 0 0 8px var(--neon-green); }
+    .subtitle { font-size: 0.8rem; opacity: 0.8; letter-spacing: 2px; }
+
+    .permission-banner {
+      background: #1a1500;
+      border: 1px solid var(--warn-yellow);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .permission-btn {
+      background: var(--warn-yellow);
+      color: #000;
+      border: none;
+      padding: 8px 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      margin-top: 8px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .selection-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .game-btn {
+      flex: 1;
+      padding: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .game-btn.active {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 10px rgba(0,255,102,0.3);
+      color: var(--neon-green);
+    }
+
+    .scan-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--neon-green);
+      color: #000;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-bottom: 15px;
+    }
+
+    .progress-box {
+      background: var(--card-bg);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border-color);
+    }
+
+    .bar-outer {
+      background: #000;
+      height: 15px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 8px 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .bar-inner {
+      height: 100%;
+      width: 0%;
+      background: var(--neon-green);
+      transition: width 0.2s;
+    }
+
+    .card {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      background: var(--card-bg);
+      border-left: 4px solid var(--border-color);
+    }
+
+    .card.red { border-left-color: var(--alert-red); background: #1a0a0a; }
+    .card.yellow { border-left-color: var(--warn-yellow); background: #1a170a; }
+    .card.green { border-left-color: var(--neon-green); background: #0a1a10; }
+
+    .action-btn {
+      background: transparent;
+      border: 1px solid var(--neon-green);
+      color: var(--neon-green);
+      padding: 6px 10px;
+      margin-top: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="title">FF HACK SCANNER</div>
+    <div class="subtitle">SCANNER DE SEGURANÇA</div>
+  </div>
+
+  <div id="permissionBanner" class="permission-banner">
+    ⚠️ <strong>Acesso aos arquivos necessário:</strong> Para encontrar arquivos de XIT ou hacks salvos na memória, o scanner precisa de permissão de leitura.
+    <button class="permission-btn" onclick="requestPermission()">CONCEDER PERMISSÃO DE ARQUIVOS</button>
+  </div>
+
+  <div class="selection-box">
+    <div class="game-btn active" id="btnNormal" onclick="selectGame('com.dts.freefireth', 'btnNormal')">
+      FREE FIRE
+    </div>
+    <div class="game-btn" id="btnMax" onclick="selectGame('com.dts.freefiremax', 'btnMax')">
+      FREE FIRE MAX
+    </div>
+  </div>
+
+  <button class="scan-btn" onclick="startScan()">INICIAR ANALISE REAL</button>
+
+  <div class="progress-box">
+    <div style="display:flex; justify-content:space-between; font-size: 0.8rem;">
+      <span id="stepLabel">Aguardando início...</span>
+      <span id="percentLabel">0%</span>
+    </div>
+    <div class="bar-outer">
+      <div class="bar-inner" id="progressBar"></div>
+    </div>
+  </div>
+
+  <div id="resultsContainer"></div>
+
+  <script>
+    let selectedPackage = 'com.dts.freefireth';
+
+    function selectGame(pkg, btnId) {
+      selectedPackage = pkg;
+      document.querySelectorAll('.game-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(btnId).classList.add('active');
+    }
+
+    function checkPermissions() {
+      if (window.FFScannerNative && window.FFScannerNative.checkPermissionStatus) {
+        const status = JSON.parse(window.FFScannerNative.checkPermissionStatus());
+        if (!status.hasStoragePermission) {
+          document.getElementById('permissionBanner').style.display = 'block';
+        } else {
+          document.getElementById('permissionBanner').style.display = 'none';
+        }
+      }
+    }
+
+    function requestPermission() {
+      if (window.FFScannerNative && window.FFScannerNative.requestStoragePermission) {
+        window.FFScannerNative.requestStoragePermission();
+      }
+    }
+
+    async function startScan() {
+      const container = document.getElementById('resultsContainer');
+      container.innerHTML = '';
+
+      updateProgress('Verificando instalação do jogo...', 20);
+
+      let pkgInfo = { installed: false };
+      if (window.FFScannerNative && window.FFScannerNative.checkPackageInstalled) {
+        pkgInfo = JSON.parse(window.FFScannerNative.checkPackageInstalled(selectedPackage));
+      }
+
+      updateProgress('Analisando arquivos do armazenamento...', 60);
+
+      let findings = [];
+      if (window.FFScannerNative && window.FFScannerNative.runRealStorageScan) {
+        findings = JSON.parse(window.FFScannerNative.runRealStorageScan());
+      }
+
+      updateProgress('Concluindo análise...', 100);
+
+      // Renderiza resultados
+      if (!pkgInfo.installed) {
+        renderCard('yellow', 'JOGO NÃO ENCONTRADO', 'Aplicativo', selectedPackage, 'O pacote selecionado não está instalado no dispositivo.', 'INCONCLUSIVO');
+      } else {
+        renderCard('green', 'JOGO INSTALADO', 'Aplicativo', selectedPackage, `Versão encontrada: ${pkgInfo.versionName}`, 'SEGURO');
+      }
+
+      if (findings.length === 0) {
+        renderCard('green', 'ANÁLISE CONCLUÍDA', 'Sistema', 'Armazenamento', 'Nenhum indicador suspeito ou arquivo com nome de XIT foi encontrado nas áreas permitidas.', 'SEGURO');
+      } else {
+        findings.forEach(item => {
+          renderCard('red', item.name, item.type, item.path, item.reason, item.confidence, true);
+        });
+      }
+    }
+
+    function updateProgress(step, percent) {
+      document.getElementById('stepLabel').innerText = step;
+      document.getElementById('percentLabel').innerText = percent + '%';
+      document.getElementById('progressBar').style.width = percent + '%';
+    }
+
+    function renderCard(type, title, category, path, reason, confidence, showBtn = false) {
+      const container = document.getElementById('resultsContainer');
+      const card = document.createElement('div');
+      card.className = `card ${type}`;
+      
+      let btnHtml = '';
+      if (showBtn) {
+        btnHtml = `<button class="action-btn" onclick="locateFile('${path}')">LOCALIZAR ARQUIVO</button>`;
+      }
+
+      card.innerHTML = `
+        <strong>${title}</strong><br>
+        <small>Tipo: ${category}</small><br>
+        <small>Caminho: ${path}</small><br>
+        <small>Motivo: ${reason}</small><br>
+        <small>Classificação: ${confidence}</small><br>
+        ${btnHtml}
+      `;
+      container.appendChild(card);
+    }
+
+    function locateFile(path) {
+      if (window.FFScannerNative && window.FFScannerNative.openFileLocation) {
+        const success = window.FFScannerNative.openFileLocation(path);
+        if (!success) {
+          alert('Não foi possível abrir o gerenciador de arquivos diretamente. Localização: ' + path);
+        }
+      } else {
+        alert('Caminho do arquivo: ' + path);
+      }
+    }
+
+    // Verifica status da permissão ao carregar
+    window.onload = checkPermissions;
+  </script>
+</body>
+</html>
